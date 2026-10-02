@@ -28,8 +28,8 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           SHEETS_KEY_JSON: ${{ secrets.SHEETS_KEY_JSON }}
-          DAILY: "400"
-          PER_RUN: "2"
+          DAILY: "450"
+          PER_RUN: "3"
         run: |
           umask 077
           printf '%s' "$SHEETS_KEY_JSON" > "$RUNNER_TEMP/key.json"
