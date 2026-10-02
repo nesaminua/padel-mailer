@@ -1,0 +1,36 @@
+name: send
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: send
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet google-auth requests
+      - name: Send
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          SHEETS_KEY_JSON: ${{ secrets.SHEETS_KEY_JSON }}
+          DAILY: "400"
+          PER_RUN: "2"
+        run: |
+          umask 077
+          printf '%s' "$SHEETS_KEY_JSON" > "$RUNNER_TEMP/key.json"
+          SHEETS_KEY_FILE="$RUNNER_TEMP/key.json" python send.py
