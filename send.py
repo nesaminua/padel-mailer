@@ -165,19 +165,19 @@ def main():
     if not check_bounces(rows):
         print("STOP: bounce rate above 3%, nothing sent", flush=True)
         sys.exit(STOP)
-    busy = False
+    sent_any = False
     for n, (user, password, daily) in enumerate(ACCOUNTS, 1):
         today = sent_today(rows, user)
         room = min(PER_RUN, daily - today)
         if room <= 0 or not todo:
             print(f"account {n}: {today}/{daily} today, nothing to send", flush=True)
             continue
-        busy = True
         batch, todo = todo[:room], todo[room:]
         done = send_batch(n, user, password, batch)
+        sent_any = sent_any or done > 0
         print(f"account {n}: sent this run {done} | today {today + done}/{daily}", flush=True)
-    if not busy:
-        sys.exit(IDLE)
+    if not sent_any:
+        sys.exit(IDLE)  # nothing went out (caps, failed logins, refusals): wait 15 min, never hammer Gmail
 
 
 if __name__ == "__main__":

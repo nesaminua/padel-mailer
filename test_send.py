@@ -23,6 +23,19 @@ def test_sheet_values_cannot_inject_headers_or_recipients():
     assert send.EMAIL.match("info@club-padel.es")
 
 
+def test_run_with_nothing_sent_reports_idle_not_success(monkeypatch):
+    row = [""] * 5 + ["club@x.es", "email", "not sent", "", "", "", "S", "B"]
+    monkeypatch.setattr(send, "load", lambda: [(2, row)])
+    monkeypatch.setattr(send, "check_bounces", lambda rows: True)
+    monkeypatch.setattr(send, "send_batch", lambda *a: 0)
+    try:
+        send.main()
+    except SystemExit as e:
+        assert e.code == send.IDLE
+    else:
+        raise AssertionError("a run that sent nothing must exit IDLE, or the loop retries Gmail every 30 s")
+
+
 def test_failed_login_skips_only_that_account(monkeypatch):
     def boom(*a, **k):
         raise smtplib.SMTPAuthenticationError(535, b"bad")
