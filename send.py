@@ -38,6 +38,8 @@ GAP = (float(os.environ.get("GAP_MIN", "40")), float(os.environ.get("GAP_MAX", "
 TODAY = (datetime.datetime.utcnow() + datetime.timedelta(hours=float(os.environ.get("TZ_OFFSET", "1")))).date()
 SENT_NOTE = "email sent (auto, Gmail)"
 BOUNCE_LIMIT = 0.03
+IDLE = 3  # exit code: every account at its daily cap or the sheet is empty; the workflow waits before the next run
+STOP = 2  # exit code: bounce rate too high; the workflow does not schedule another run
 EMAIL = re.compile(r"^[a-z0-9._%+'-]+@[a-z0-9.-]+\.[a-z]{2,}$", re.I | re.ASCII)
 if os.environ.get("GITHUB_ACTIONS") == "true":
     for _, _password, _ in ACCOUNTS:
@@ -159,19 +161,23 @@ def main():
     todo = [(i, v) for i, v in rows if sendable(v)]
     print(f"today {TODAY} | accounts {len(ACCOUNTS)} | left in sheet {len(todo)}", flush=True)
     if not todo:
-        return
+        sys.exit(IDLE)
     if not check_bounces(rows):
         print("STOP: bounce rate above 3%, nothing sent", flush=True)
-        sys.exit(1)
+        sys.exit(STOP)
+    busy = False
     for n, (user, password, daily) in enumerate(ACCOUNTS, 1):
         today = sent_today(rows, user)
         room = min(PER_RUN, daily - today)
         if room <= 0 or not todo:
             print(f"account {n}: {today}/{daily} today, nothing to send", flush=True)
             continue
+        busy = True
         batch, todo = todo[:room], todo[room:]
         done = send_batch(n, user, password, batch)
         print(f"account {n}: sent this run {done} | today {today + done}/{daily}", flush=True)
+    if not busy:
+        sys.exit(IDLE)
 
 
 if __name__ == "__main__":

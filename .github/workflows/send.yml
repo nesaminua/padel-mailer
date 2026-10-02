@@ -11,11 +11,12 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   send:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -23,6 +24,7 @@ jobs:
           python-version: "3.12"
       - run: pip install --quiet "google-auth[requests]==2.59.1" "requests==2.32.5"
       - name: Send
+        id: send
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -38,4 +40,19 @@ jobs:
         run: |
           umask 077
           printf '%s' "$SHEETS_KEY_JSON" > "$RUNNER_TEMP/key.json"
+          set +e
           SHEETS_KEY_FILE="$RUNNER_TEMP/key.json" python send.py
+          code=$?
+          rm -f "$RUNNER_TEMP/key.json"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          case $code in 0|3) exit 0 ;; *) exit $code ;; esac
+      # Cron on a new repository can stay silent for hours, so every run queues the next one itself:
+      # sent -> 30 s, idle (daily caps reached) -> 15 min, crash -> 5 min, bounce stop (2) -> no next run.
+      - name: Queue next run
+        if: always() && steps.send.outputs.code != '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.send.outputs.code }}
+        run: |
+          case "$CODE" in 0) sleep 30 ;; 3) sleep 900 ;; *) sleep 300 ;; esac
+          gh workflow run send.yml --ref "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"
