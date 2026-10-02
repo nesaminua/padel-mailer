@@ -17,19 +17,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
-      - run: pip install --quiet google-auth requests
+      - run: pip install --quiet google-auth==2.59.1
       - name: Send
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_USER_2: ${{ secrets.GMAIL_USER_2 }}
+          GMAIL_APP_PASSWORD_2: ${{ secrets.GMAIL_APP_PASSWORD_2 }}
+          DAILY_2: ${{ vars.DAILY_2 || '450' }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           SHEETS_KEY_JSON: ${{ secrets.SHEETS_KEY_JSON }}
           DAILY: "450"
           PER_RUN: "3"
+          GAP_MIN: "25"
+          GAP_MAX: "50"
         run: |
           umask 077
           printf '%s' "$SHEETS_KEY_JSON" > "$RUNNER_TEMP/key.json"
