@@ -37,7 +37,9 @@ PER_RUN = int(os.environ.get("PER_RUN", "2"))
 GAP = (float(os.environ.get("GAP_MIN", "40")), float(os.environ.get("GAP_MAX", "90")))
 TODAY = (datetime.datetime.utcnow() + datetime.timedelta(hours=float(os.environ.get("TZ_OFFSET", "1")))).date()
 SENT_NOTE = "email sent (auto, Gmail)"
-BOUNCE_LIMIT = 0.03
+# Scraped addresses bounce 2-4% normally; reputation suffers from ~5%. Below 100 sends one bounce swings the rate.
+BOUNCE_LIMIT = 0.05
+BOUNCE_MIN_SENT = 100
 IDLE = 3  # exit code: every account at its daily cap or the sheet is empty; the workflow waits before the next run
 STOP = 2  # exit code: bounce rate too high; the workflow does not schedule another run
 EMAIL = re.compile(r"^[a-z0-9._%+'-]+@[a-z0-9.-]+\.[a-z]{2,}$", re.I | re.ASCII)
@@ -94,7 +96,7 @@ def bounced_addresses(sent):
 
 
 def check_bounces(rows):
-    """Marks bounced rows; returns False (no sending this run) when bounces exceed 3% of everything sent."""
+    """Marks bounced rows; returns False (no sending this run) when bounces exceed BOUNCE_LIMIT of all sent."""
     sent = {v[5].strip().lower(): i for i, v in rows if v[7] in ("sent", "bounced") and v[9].startswith(("email sent", "email bounced"))}
     if not sent:
         return True
@@ -105,7 +107,7 @@ def check_bounces(rows):
             write({f"H{i}": "bounced", f"J{i}": "email bounced: address does not exist"})
     rate = len(hits) / len(sent)
     print(f"sent total {len(sent)} | bounced {len(hits)} ({rate:.1%})", flush=True)
-    return not (len(sent) >= 30 and rate > BOUNCE_LIMIT)
+    return not (len(sent) >= BOUNCE_MIN_SENT and rate > BOUNCE_LIMIT)
 
 
 def message(v, sender):
@@ -163,7 +165,7 @@ def main():
     if not todo:
         sys.exit(IDLE)
     if not check_bounces(rows):
-        print("STOP: bounce rate above 3%, nothing sent", flush=True)
+        print(f"STOP: bounce rate above {BOUNCE_LIMIT:.0%}, nothing sent", flush=True)
         sys.exit(STOP)
     sent_any = False
     for n, (user, password, daily) in enumerate(ACCOUNTS, 1):

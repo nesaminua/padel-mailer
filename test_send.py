@@ -36,6 +36,19 @@ def test_run_with_nothing_sent_reports_idle_not_success(monkeypatch):
         raise AssertionError("a run that sent nothing must exit IDLE, or the loop retries Gmail every 30 s")
 
 
+def test_bounce_stop_needs_100_sends_and_more_than_5_percent(monkeypatch):
+    def rows(n_sent):
+        return [(i + 2, [""] * 5 + [f"c{i}@x.es", "email", "sent", "", "email sent (auto, Gmail)"] + [""] * 3)
+                for i in range(n_sent)]
+    two_bounces = lambda sent: {"c0@x.es", "c1@x.es"}
+    monkeypatch.setattr(send, "bounced_addresses", two_bounces)
+    monkeypatch.setattr(send, "write", lambda cells: None)
+    assert send.check_bounces(rows(62))           # 3.2% of 62: too few sends to judge
+    assert send.check_bounces(rows(100))          # 2%: fine
+    monkeypatch.setattr(send, "bounced_addresses", lambda sent: {f"c{i}@x.es" for i in range(6)})
+    assert not send.check_bounces(rows(100))      # 6%: stop
+
+
 def test_failed_login_skips_only_that_account(monkeypatch):
     def boom(*a, **k):
         raise smtplib.SMTPAuthenticationError(535, b"bad")
