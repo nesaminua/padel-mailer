@@ -34,6 +34,9 @@ jobs:
           GMAIL_USER_2: ${{ secrets.GMAIL_USER_2 }}
           GMAIL_APP_PASSWORD_2: ${{ secrets.GMAIL_APP_PASSWORD_2 }}
           DAILY_2: ${{ vars.DAILY_2 || '450' }}
+          GMAIL_USER_3: ${{ secrets.GMAIL_USER_3 }}
+          GMAIL_APP_PASSWORD_3: ${{ secrets.GMAIL_APP_PASSWORD_3 }}
+          DAILY_3: ${{ vars.DAILY_3 || '450' }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           SHEETS_KEY_JSON: ${{ secrets.SHEETS_KEY_JSON }}
           DAILY: "450"
