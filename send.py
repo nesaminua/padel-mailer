@@ -38,7 +38,7 @@ GAP = (float(os.environ.get("GAP_MIN", "40")), float(os.environ.get("GAP_MAX", "
 TODAY = (datetime.datetime.utcnow() + datetime.timedelta(hours=float(os.environ.get("TZ_OFFSET", "1")))).date()
 SENT_NOTE = "email sent (auto, Gmail)"
 BOUNCE_LIMIT = 0.03
-EMAIL = re.compile(r"^[a-z0-9._%+'-]+@[a-z0-9.-]+\.[a-z]{2,}$", re.I)
+EMAIL = re.compile(r"^[a-z0-9._%+'-]+@[a-z0-9.-]+\.[a-z]{2,}$", re.I | re.ASCII)
 if os.environ.get("GITHUB_ACTIONS") == "true":
     for _, _password, _ in ACCOUNTS:
         print(f"::add-mask::{_password}", flush=True)  # spaceless form differs from the masked secret
@@ -86,7 +86,7 @@ def bounced_addresses(sent):
             text += "".join(box.fetch(i, "(RFC822)")[1][0][1].decode("utf-8", "ignore").lower()
                             for i in ids[0].split())
             box.logout()
-        except (imaplib.IMAP4.error, OSError) as e:
+        except (imaplib.IMAP4.error, OSError, TypeError, IndexError) as e:
             print(f"account {n}: bounce check skipped ({type(e).__name__})", flush=True)
     return {a for a in sent if a in text}
 
@@ -147,7 +147,10 @@ def send_batch(n, user, password, batch):
             break
         write({f"H{i}": "sent", f"I{i}": TODAY.isoformat(), f"J{i}": f"{SENT_NOTE}: {user}"})
         done += 1
-    smtp.quit()
+    try:
+        smtp.quit()
+    except (smtplib.SMTPException, OSError):
+        pass  # Gmail already dropped the connection (e.g. after a 421); the sends above are recorded
     return done
 
 
