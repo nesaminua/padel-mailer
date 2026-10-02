@@ -1,3 +1,13 @@
 *.json
 .env
 __pycache__/
+.claude/
+.claude.json
+CLAUDE.md
+.task/
+.cursorrules
+.cursor/
+.copilot/
+.aider*
+.continue/
+.codeium/
